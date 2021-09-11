@@ -1,7 +1,19 @@
 Readme
 ================
-Grupo\_08
+Grupo\_05
 10/9/2021
+
+**Integrantes del Grupo-05**
+
+***BACA QUIÑONEZ, Pedro***
+
+***COSIOS LEONA, Jose (17160182)***
+
+***ESQUIVEL GUILLERMO, Antoni (17160183)***
+
+***GARRO DOROTEO, Jamir (17160185)***
+
+***RIVERA REAÑO, Ricardo (17160037)***
 
 # ANALISIS EXPLORATORIO
 
