@@ -5,26 +5,320 @@ date: "10/9/2021"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# ANALISIS EXPLORATORIO
+
+**Primero Cargamos las librerias**
+```{r message=FALSE, warning=FALSE}
+library(PerformanceAnalytics)
+library(GGally)
+library(lattice)
+library(cptcity)
+library(psych)
+library(readxl)
+library(mice)
+library(VIM)
+library(tidyverse)
+library(dplyr)
+library(factoextra)
+library(NbClust)
+library(ade4)
+library(factoextra)
+library(corrplot)
+library(rgl)
+library(NbClust)
+library(LICORS)
+library(clusterSim)
+library(clValid)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Análisis EDA
 
-```{r cars}
-summary(cars)
+**Leemos los datos**
+```{r}
+data <- read_xls("Mundial.xls") %>% 
+  dplyr::select(-Paises, -Casos, -Poblacion, -Death)
+head(data)
 ```
 
-## Including Plots
+**Vemos si tiene Missin Value**
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+mice::md.pattern(data, rotate.names = TRUE)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+**Estandarizamos con Scale**
+
+```{r}
+scale_data <- scale(data)
+```
+
+**Hallamos su covarianza**
+```{r}
+cor(scale_data)
+```
+**Hallamos su covarianza**
+```{r}
+cov <- cov(scale_data)
+diag(cov) %>% sum()
+```
+
+
+**Justificamos las variables con grafica**
+
+```{r}
+chart.Correlation(scale_data, histogram = T, pch = 20)
+```
+
+```{r, message=FALSE}
+ggpairs(as.data.frame(scale_data))
+```
+
+```{r, message=FALSE}
+mtx <- cor(scale_data)
+levelplot(
+  mtx,
+  col.regions =
+    cpt(
+      pal = "cb_div_RdBu_11", n = 100, rev = F
+    )
+)
+```
+
+## Análisis PCA
+
+```{r}
+pca <-
+  dudi.pca(
+    scale_data,
+    scale = F, scannf = F,
+    nf = ncol(scale_data)
+  )
+
+summary(pca)
+```
+**Valores Propios**
+
+```{r}
+pca$eig
+sum(pca$eig)
+```
+
+**Vectores propios**
+
+```{r}
+pca$c1
+```
+
+**Scree Plot**
+
+```{r}
+fviz_eig(pca, addlabels = T)
+```
+
+**correlaciones entre variables y Componentes**
+
+```{r}
+pca$co
+```
+
+**grafica de correlacione entre variables y Componentes**
+
+```{r}
+levelplot(
+  as.matrix(pca$co),
+  col.regions =
+    cpt(
+      pal = "cb_div_RdBu_11", n = 100, rev = F
+    )
+)
+
+```
+
+**Contribucion de las variables a los componentes**
+
+```{r}
+contrib <- as.matrix(pca$co * pca$co)
+head(contrib)
+```
+
+
+**Contribucion de las variables a los componentes**
+
+```{r}
+corrplot(contrib, is.corr = F)
+```
+
+**Obteniendo los Score O Puntuaciones**
+
+```{r, warning=FALSE}
+as.tibble(scale_data)
+head(pca$li)
+dim(pca$li)
+result <-
+  as.tibble(pca$li) %>%
+  dplyr::select(sprintf("Axis%1$s", 1:4))
+
+```
+
+
+## Análisis Claster
+
+
+**calculo de las distancias**
+
+```{r}
+distancia <- dist(scale(result), method = "euclidean")
+as.matrix(distancia) %>% dim()
+cluster::daisy(result, metric = "euclidean")
+```
+
+**metodo jerarquico, mediante enlace ward**
+
+```{r}
+hmodel <- hclust(distancia, method = "ward.D")
+plot(hmodel)
+```
+
+
+**proceso de agrupamiento indicando distancias**
+
+```{r}
+hmodel$height
+plot(hmodel$height, type = "p")
+lines(hmodel$height)
+(hmodel$height)[18]
+```
+
+**k clusters**
+
+```{r}
+plot(hmodel)
+output <- cutree(hmodel, k = 3)
+length(output)
+table(output)
+
+dplyr::bind_cols(scale(result), cluster = output)
+
+```
+
+
+**k clusters**
+
+```{r}
+dist2 <- as.matrix(distancia)
+heatmap(dist2)
+```
+
+**boxplote, caracterizacion de clusters**
+
+```{r}
+data2 <- dplyr::mutate(as.data.frame(scale(result)), cluster = output)
+boxplot(
+  data2$Axis1 ~ data2$cluster,
+  col = c("blue", "red", "green")
+)
+
+boxplot(
+  data2$Axis2 ~ data2$cluster,
+  col = c("blue", "red", "green")
+)
+```
+
+## k-means
+
+**gráficas**
+
+```{r}
+set.seed(2021)
+factoextra::fviz_nbclust(
+  result, kmeans, method = "silhouette",
+  k.max = 20
+)
+```
+
+```{r}
+set.seed(2021)
+factoextra::fviz_nbclust(
+  result, kmeans, method = "wss",
+  k.max = 20
+)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+nb <-  
+  NbClust::NbClust(
+    as.matrix(result), diss = NULL, distance = "euclidean",     
+    min.nc = 2, max.nc = 20, method = "kmeans", index = "all"
+    )
+factoextra::fviz_nbclust(nb)
+```
+
+**k-means**
+```{r}
+set.seed(2021)
+model <-
+  kmeans(
+    x = result, centers = 3, iter.max = 200,
+    nstart = 200, algorithm = "Hartigan-Wong",
+    trace = F
+  )
+```
+
+
+**Suma de cuadrados Interclaster**
+
+```{r}
+model$withinss
+model$tot.withinss
+```
+
+**valores de silueta**
+
+
+```{r}
+sil <- cluster::silhouette(model$cluster, dist(result))
+class(sil)
+head(sil)
+
+factoextra::fviz_silhouette(sil) +
+  coord_flip() +
+  theme_bw()
+```
+
+
+**k-means++**
+```{r}
+set.seed(2021)
+
+model_02 <-
+  LICORS::kmeanspp(
+    data = result, k = 3,
+    start = "random", iter.max = 100,
+    nstart = 100, algorithm = "Hartigan-Wong",
+    trace = 0
+  )
+```
+
+
+**Validacion **
+
+**Indice_Davis_Boulding**
+```{r}
+grupo <- model_02$cluster
+index <- clusterSim::index.DB(result, grupo, centrotypes = "centroids")
+index$DB
+```
+**Indice de Dum**
+
+```{r}
+clValid::dunn(Data = result, clusters = grupo, distance = NULL)
+```
+
+
+
+
+
+
