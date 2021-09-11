@@ -38,7 +38,7 @@ library(clValid)
 **Leemos los datos**
 ```{r}
 data <- read_xls("Mundial.xls") %>% 
-  dplyr::select(-Paises, -Casos, -Poblacion, -Death)
+  dplyr::select(-Paises, -Casos, -Poblacion, -Death, -vel)
 head(data)
 ```
 
@@ -158,7 +158,7 @@ head(pca$li)
 dim(pca$li)
 result <-
   as.tibble(pca$li) %>%
-  dplyr::select(sprintf("Axis%1$s", 1:4))
+  dplyr::select(sprintf("Axis%1$s", 1:3))
 
 ```
 
@@ -261,7 +261,7 @@ factoextra::fviz_nbclust(nb)
 set.seed(2021)
 model <-
   kmeans(
-    x = result, centers = 3, iter.max = 200,
+    x = result, centers = 4, iter.max = 200,
     nstart = 200, algorithm = "Hartigan-Wong",
     trace = F
   )
@@ -295,7 +295,7 @@ set.seed(2021)
 
 model_02 <-
   LICORS::kmeanspp(
-    data = result, k = 3,
+    data = result, k = 4,
     start = "random", iter.max = 100,
     nstart = 100, algorithm = "Hartigan-Wong",
     trace = 0

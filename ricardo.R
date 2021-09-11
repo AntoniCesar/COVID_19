@@ -17,9 +17,10 @@ library(NbClust)
 
 
 #  leemos la data 
-data <- read_xls("Mundial.xls") %>% 
-  select(-Paises, -Casos, -Poblacion, -Death)
 
+data1 <- read_xls("Mundial.xls") 
+data <- dplyr::select(data1,-Paises, -Casos, -Poblacion, -Death, -vel)
+view(data1)
 # VER SI LA DATA ESTA COMPLETA
 
 mice::md.pattern(data, rotate.names = TRUE)
@@ -33,23 +34,14 @@ cor(scale_data)
 cov <- cov(scale_data)
 diag(cov) %>% sum()
 
-# Calculo del eigenvalues and eigenvector
 
-ev <- eigen(cov)
-sum(ev$values)
-
-
-# calculo de las cargas y score
-
-
-  
 # JUSTIFICAR 
 
-
+mtx <- cor(scale_data)
 chart.Correlation(scale_data, histogram = T, pch = 20)
+
 ggpairs(as.data.frame(scale_data))
 
-mtx <- cor(scale_data)
 levelplot(mtx)
 levelplot(
   mtx,
@@ -79,9 +71,7 @@ sum(pca$eig)
 # vectores propios
 pca$c1
 
-# Scree plot
-library(factoextra)
-fviz_eig(pca, addlabels = T)
+
 
 # correlaciones entre variables y CP
 pca$co
@@ -102,9 +92,6 @@ contrib
 
 corrplot(as.matrix(pca$co), is.corr = F)
 
-library(corrplot)
-corrplot(contrib, is.corr = F)
-
 
 # obteniendo Scores o puntuaciones
 as.tibble(scale_data)
@@ -112,47 +99,8 @@ head(pca$li)
 dim(pca$li)
 result <-
   as.tibble(pca$li) %>%
-  dplyr::select(sprintf("Axis%1$s", 1:4))
+  dplyr::select(sprintf("Axis%1$s", 1:3))
 
-
-
-
-
-
-
-
-
-# calculo de las distancia
-distancia <- dist(scale(result), method = "euclidean")
-as.matrix(distancia) %>% dim()
-cluster::daisy(result, metric = "euclidean")
-
-# metodo jerarquico, mediante enlace ward
-cluster::agnes()
-cluster::diana()
-hmodel <- hclust(distancia, method = "ward.D")
-plot(hmodel)
-
-# proceso de agrupamiento indicando distancias
-hmodel$height
-plot(hmodel$height, type = "p")
-lines(hmodel$height)
-(hmodel$height)[18]
-
-
-# k clusters
-plot(hmodel)
-output <- cutree(hmodel, k = 3)
-length(output)
-table(output)
-
-dplyr::bind_cols(scale(result), cluster = output)
-
-
-# heatmap
-library(rgl)
-dist2 <- as.matrix(distancia)
-heatmap(dist2)
 
 
 
@@ -168,14 +116,6 @@ boxplot(
   data2$Axis2 ~ data2$cluster,
   col = c("blue", "red", "green")
 )
-
-
-
-
-
-
-
-
 
 
 ### K-means
@@ -212,7 +152,7 @@ factoextra::fviz_nbclust(nb)
 set.seed(2021)
 model <-
   kmeans(
-    x = result, centers = 3, iter.max = 200,
+    x = result, centers = 4, iter.max = 200,
     nstart = 200, algorithm = "Hartigan-Wong",
     trace = F
   )
@@ -238,7 +178,7 @@ set.seed(2021)
 
 model_02 <-
   LICORS::kmeanspp(
-    data = result, k = 3,
+    data = result, k = 4,
     start = "random", iter.max = 100,
     nstart = 100, algorithm = "Hartigan-Wong",
     trace = 0
@@ -254,7 +194,3 @@ grupo <- model_02$cluster
 index <- clusterSim::index.DB(result, grupo, centrotypes = "centroids")
 index$DB
 
-
-# Indice de Dum
-library(clValid)
-clValid::dunn(Data = result, clusters = grupo, distance = NULL)
